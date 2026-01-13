@@ -90,7 +90,25 @@ export default function Home() {
 
       <div style={{ backgroundColor: "#f0f9ff", padding: "20px", borderRadius: "12px", marginBottom: "30px" }}>
         <input type="text" placeholder="地點" value={title} onChange={(e) => setTitle(e.target.value)} style={{ width: "100%", padding: "10px", marginBottom: "10px" }} />
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ width: "100%", padding: "10px", marginBottom: "10px" }} />
+        <input 
+  type="date" 
+  value={date} 
+  onChange={(e) => setDate(e.target.value)} 
+  style={{ 
+    width: "100%", 
+    padding: "12px", 
+    marginBottom: "10px", 
+    borderRadius: "8px", 
+    border: "1px solid #ddd",
+    fontSize: "16px",        // 防止 iPhone 自動放大頁面
+    backgroundColor: "white", // 確保背景不是透明
+    color: "#333",           // 確保文字顏色清晰
+    minHeight: "45px",       // 讓點擊區域夠大
+    display: "block",
+    appearance: "none",      // 去除某些瀏覽器預設樣式
+    WebkitAppearance: "none"
+  }} 
+/>
         <textarea placeholder="備註" value={note} onChange={(e) => setNote(e.target.value)} style={{ width: "100%", padding: "10px", marginBottom: "10px" }} />
         <button onClick={handleAdd} style={{ width: "100%", padding: "12px", backgroundColor: "#0070f3", color: "white", borderRadius: "8px" }}>➕ 加入行程</button>
       </div>
