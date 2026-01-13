@@ -1,54 +1,116 @@
+"use client";
+import { useState, useEffect } from "react";
+import { db } from "./firebase";
+// 這次多引入了 addDoc (新增資料的功能)
+import { collection, getDocs, addDoc } from "firebase/firestore";
+
 export default function Home() {
+  const [plans, setPlans] = useState([]);
+  
+  // 1. 這些是用來暫存你輸入框裡的文字
+  const [title, setTitle] = useState("");
+  const [date, setDate] = useState("");
+  const [note, setNote] = useState("");
+
+  // 抓取資料的函式 (跟之前一樣)
+  async function fetchData() {
+    const querySnapshot = await getDocs(collection(db, "plans"));
+    const list = [];
+    querySnapshot.forEach((doc) => {
+      list.push({ id: doc.id, ...doc.data() });
+    });
+    // 這裡做個簡單排序，讓日期近的排上面
+    list.sort((a, b) => (a.date > b.date ? 1 : -1));
+    setPlans(list);
+  }
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // 2. 這就是「新增行程」的神奇按鈕功能
+  async function handleAdd() {
+    if (!title) return alert("請至少輸入行程名稱喔！");
+
+    try {
+      // 把資料寫入 Firebase 雲端
+      await addDoc(collection(db, "plans"), {
+        title: title,
+        date: date,
+        note: note
+      });
+
+      // 清空輸入框
+      setTitle("");
+      setDate("");
+      setNote("");
+      
+      // 重新抓取資料，讓畫面馬上更新
+      fetchData();
+    } catch (error) {
+      console.error("新增失敗：", error);
+      alert("發生錯誤，請檢查主控台");
+    }
+  }
+
   return (
-    <main className="min-h-screen bg-gray-100 p-4">
-      {/* 標題區 */}
-      <header className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-800">
-          我們的旅遊行程 ✈️
-        </h1>
-        <button className="rounded-full bg-blue-600 px-4 py-2 text-white shadow-md hover:bg-blue-700">
-          登入
+    <div style={{ padding: "20px", maxWidth: "600px", margin: "0 auto", fontFamily: "sans-serif" }}>
+      <h1 style={{ textAlign: "center", marginBottom: "30px" }}>✈️ 我們的旅遊計畫</h1>
+
+      {/* 輸入區塊 */}
+      <div style={{ backgroundColor: "#f0f9ff", padding: "20px", borderRadius: "12px", marginBottom: "30px" }}>
+        <h3 style={{ margin: "0 0 15px 0", color: "#0070f3" }}>新增一個行程</h3>
+        <input 
+          type="text" 
+          placeholder="要去哪裡？(例如：迪士尼)" 
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          style={{ width: "100%", padding: "10px", marginBottom: "10px", borderRadius: "8px", border: "1px solid #ddd" }}
+        />
+        <input 
+          type="date" 
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          style={{ width: "100%", padding: "10px", marginBottom: "10px", borderRadius: "8px", border: "1px solid #ddd" }}
+        />
+        <input 
+          type="text" 
+          placeholder="備註 (例如：記得買門票)" 
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          style={{ width: "100%", padding: "10px", marginBottom: "10px", borderRadius: "8px", border: "1px solid #ddd" }}
+        />
+        <button 
+          onClick={handleAdd}
+          style={{ width: "100%", padding: "12px", backgroundColor: "#0070f3", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }}
+        >
+          ➕ 加入行程
         </button>
-      </header>
-
-      {/* 內容區：模擬行程卡片 */}
-      <div className="space-y-4">
-        {/* 第一天 */}
-        <div className="rounded-xl bg-white p-4 shadow-sm">
-          <h2 className="mb-2 text-lg font-semibold text-blue-600">Day 1 - 2026/02/14</h2>
-          <div className="border-l-4 border-green-500 pl-3">
-            <h3 className="font-bold">淺草雷門</h3>
-            <p className="text-sm text-gray-500">10:00 AM - 記得穿和服</p>
-            
-            {/* Google Maps 跳轉按鈕 */}
-            <a 
-              href="https://www.google.com/maps/search/?api=1&query=淺草雷門" 
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-2 inline-block rounded-md bg-green-100 px-3 py-1 text-sm text-green-700 hover:bg-green-200"
-            >
-              在 Google Maps 查看 🗺️
-            </a>
-          </div>
-        </div>
-
-        {/* 測試用：第二天 */}
-        <div className="rounded-xl bg-white p-4 shadow-sm">
-          <h2 className="mb-2 text-lg font-semibold text-blue-600">Day 2 - 2026/02/15</h2>
-          <div className="border-l-4 border-yellow-500 pl-3">
-            <h3 className="font-bold">迪士尼樂園</h3>
-            <p className="text-sm text-gray-500">08:00 AM - 提早排隊</p>
-             <a 
-              href="https://www.google.com/maps/search/?api=1&query=東京迪士尼樂園" 
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-2 inline-block rounded-md bg-green-100 px-3 py-1 text-sm text-green-700 hover:bg-green-200"
-            >
-              在 Google Maps 查看 🗺️
-            </a>
-          </div>
-        </div>
       </div>
-    </main>
+
+      {/* 顯示列表區塊 */}
+      <div>
+        {plans.map((plan) => (
+          <div key={plan.id} style={{
+            border: "1px solid #ddd",
+            borderRadius: "12px",
+            padding: "16px",
+            marginBottom: "12px",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+            backgroundColor: "#fff"
+          }}>
+            <h2 style={{ fontSize: "18px", margin: "0 0 8px 0", color: "#333" }}>
+              {plan.title}
+            </h2>
+            <div style={{ fontSize: "14px", color: "#666", marginBottom: "8px" }}>
+              📅 {plan.date || "未定日期"}
+            </div>
+            <p style={{ margin: "0", color: "#444", fontSize: "15px", borderTop: "1px solid #eee", paddingTop: "8px" }}>
+              💡 {plan.note}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
