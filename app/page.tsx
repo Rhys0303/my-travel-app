@@ -140,10 +140,10 @@ export default function Home() {
   const createNewTrip = async () => {
     const gId = "grp_" + Math.random().toString(36).substring(2, 10);
     const tId = "day_" + Math.random().toString(36).substring(2, 10);
-    await setDoc(doc(db, "groups", gId), { name: "新計畫", days: [{ id: tId, label: "Day 1" }] });
+    await setDoc(doc(db, "groups", gId), { name: "新旅程", days: [{ id: tId, label: "Day 1" }] });
     
     const saved = JSON.parse(localStorage.getItem("myTrips") || "[]");
-    saved.push({ id: gId, name: "新計畫" });
+    saved.push({ id: gId, name: "新旅程" });
     localStorage.setItem("myTrips", JSON.stringify(saved));
     setMyTrips(saved);
 
@@ -228,7 +228,7 @@ export default function Home() {
   if (view === "dashboard") {
     return (
       <div style={{ padding: "30px", maxWidth: "600px", margin: "0 auto", fontFamily: "sans-serif" }}>
-        <h1 style={{ fontWeight: "800", fontSize: "32px" }}>旅遊總管</h1>
+        <h1 style={{ fontWeight: "800", fontSize: "32px" }}>旅遊總覽</h1>
         <button onClick={createNewTrip} style={{ width: "100%", padding: "15px", backgroundColor: "#007AFF", color: "white", borderRadius: "12px", border: "none", fontWeight: "bold", margin: "20px 0" }}>✨ 建立新旅程</button>
 
         <h3 style={{ borderBottom: "1px solid #eee", paddingBottom: "10px" }}>🏠 我建立的行程</h3>
@@ -252,7 +252,7 @@ export default function Home() {
           </div>
         ))}
 
-        <h3 style={{ borderBottom: "1px solid #eee", paddingBottom: "10px", marginTop: "30px", color: "#007AFF" }}>🤝 朋友分享的行程</h3>
+        <h3 style={{ borderBottom: "1px solid #eee", paddingBottom: "10px", marginTop: "30px", color: "#007AFF" }}>🤝 朋友揪你的行程</h3>
         {sharedTrips.length === 0 && <p style={{ color: "#999", fontSize: "14px" }}>點開分享連結，行程會自動出現</p>}
         {sharedTrips.map(trip => (
           <div key={trip.id} onClick={() => loadTrip(trip.id)} style={{ padding: "15px", backgroundColor: "#EEF6FF", borderRadius: "12px", marginBottom: "10px", display: "flex", justifyContent: "space-between", alignItems: "center", border: "1px solid #D6E4FF", cursor: "pointer" }}>
@@ -279,7 +279,7 @@ export default function Home() {
   return (
     <div style={{ padding: "20px", maxWidth: "600px", margin: "0 auto", fontFamily: "sans-serif" }}>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "20px" }}>
-        <button onClick={() => { setView("dashboard"); window.history.pushState(null, "", window.location.pathname); }} style={{ color: "#007AFF", border: "none", background: "none", fontWeight: "bold" }}>❮ 回總管</button>
+        <button onClick={() => { setView("dashboard"); window.history.pushState(null, "", window.location.pathname); }} style={{ color: "#007AFF", border: "none", background: "none", fontWeight: "bold" }}>❮ 回首頁</button>
         <input value={groupName} onChange={(e) => { setGroupName(e.target.value); updateDoc(doc(db, "groups", groupId!), { name: e.target.value }); }} style={{ fontWeight: "bold", border: "none", textAlign: "right", width: "50%", fontSize: "18px" }} />
       </div>
 
@@ -287,7 +287,7 @@ export default function Home() {
         const shareUrl = `${window.location.origin}${window.location.pathname}?groupId=${groupId}`;
         navigator.clipboard.writeText(shareUrl); 
         alert("✅ 協作連結已複製！朋友點開後會自動出現在他們的大廳清單中。"); 
-      }} style={{ width: "100%", padding: "12px", backgroundColor: "#34C759", color: "white", borderRadius: "10px", border: "none", fontWeight: "bold", marginBottom: "20px" }}>📢 邀請朋友協作 (複製連結)</button>
+      }} style={{ width: "100%", padding: "12px", backgroundColor: "#34C759", color: "white", borderRadius: "10px", border: "none", fontWeight: "bold", marginBottom: "20px" }}>📢 邀請朋友一起浪 </button>
 
       {/* 天數、輸入區與列表 (維持原有邏輯) */}
       {/* ... [這部分代碼與你提供的手機拖曳版完全一致] ... */}
