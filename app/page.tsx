@@ -23,6 +23,7 @@ interface TripRecord {
 export default function Home() {
   const [view, setView] = useState<"dashboard" | "planner">("dashboard");
   
+  // ✨ 關鍵：兩個獨立的清單
   const [myTrips, setMyTrips] = useState<TripRecord[]>([]);
   const [sharedTrips, setSharedTrips] = useState<TripRecord[]>([]);
   
@@ -42,13 +43,69 @@ export default function Home() {
   const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
   const touchDragItem = useRef<number | null>(null);
 
-  // --- 1. 定義 Helper 函式 (放在 useEffect 之前以避免錯誤) ---
+  // --- 1. 核心邏輯：判斷是「我的」還是「分享的」 ---
+  useEffect(() => {
+    // 先讀取本地紀錄
+    const localMy = JSON.parse(localStorage.getItem("myTrips") || "[]");
+    const localShared = JSON.parse(localStorage.getItem("sharedTrips") || "[]");
+    setMyTrips(localMy);
+    setSharedTrips(localShared);
 
-  // 同步更新本地名稱 (確保朋友首頁看得到正確名字)
+    // 解析網址
+    const searchParams = new URLSearchParams(window.location.search);
+    const gId = searchParams.get("groupId");
+
+    if (gId) {
+      // 檢查這個 ID 是否已經存在於我的清單中
+      const isMine = localMy.some((t: TripRecord) => t.id === gId);
+      const isShared = localShared.some((t: TripRecord) => t.id === gId);
+
+      // ✨ 如果這不是我建的，而且我也還沒存過 -> 這一定是朋友分享的新連結！
+      if (!isMine && !isShared) {
+        const newShare = { id: gId, name: "載入中..." };
+        const updatedShared = [...localShared, newShare];
+        
+        // 🔥 強制存入「朋友分享」清單
+        localStorage.setItem("sharedTrips", JSON.stringify(updatedShared));
+        setSharedTrips(updatedShared);
+      }
+
+      loadTrip(gId);
+    }
+  }, []);
+
+  const loadTrip = (gId: string) => {
+    setGroupId(gId);
+    setView("planner");
+    
+    // 監聽 Firebase 資料
+    const unsub = onSnapshot(doc(db, "groups", gId), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        const currentName = data.name || "未命名旅程";
+        setGroupName(currentName);
+        
+        // ✨ 同步更新本地名稱 (不管在哪個清單，名字都要跟著變)
+        updateLocalName(gId, currentName);
+
+        const rawDays = data.days || [];
+        setDays(rawDays);
+
+        // 防呆：確保 TripId 存在
+        setTripId((prev) => {
+            if (!prev && rawDays.length > 0) return rawDays[0].id;
+            if (prev && !rawDays.find((d: TripDay) => d.id === prev) && rawDays.length > 0) return rawDays[0].id;
+            return prev;
+        });
+      }
+    });
+    return unsub;
+  };
+
+  // 雙向名稱同步 Helper
   const updateLocalName = (id: string, name: string) => {
     const mySaved = JSON.parse(localStorage.getItem("myTrips") || "[]");
     const sharedSaved = JSON.parse(localStorage.getItem("sharedTrips") || "[]");
-    
     let modified = false;
 
     // 更新「我建立的」
@@ -70,66 +127,7 @@ export default function Home() {
     }
   };
 
-  const loadTrip = (gId: string) => {
-    setGroupId(gId);
-    setView("planner");
-    
-    // 監聽 Group 資料 (名稱與天數)
-    const unsub = onSnapshot(doc(db, "groups", gId), (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        const currentName = data.name || "未命名旅程";
-        setGroupName(currentName);
-        
-        updateLocalName(gId, currentName);
-
-        const rawDays = data.days || [];
-        setDays(rawDays);
-
-        // 防丟失：如果 tripId 還沒設定，或選的天數被刪了，強制設定為第一天
-        setTripId((prev) => {
-            if (!prev && rawDays.length > 0) return rawDays[0].id;
-            if (prev && !rawDays.find((d: TripDay) => d.id === prev) && rawDays.length > 0) return rawDays[0].id;
-            return prev;
-        });
-      }
-    });
-    return unsub;
-  };
-
-  // 處理網址進入的邏輯
-  const handleUrlEntry = (gId: string, currentMy: TripRecord[], currentShared: TripRecord[]) => {
-    const isMine = currentMy.some(t => t.id === gId);
-    const isShared = currentShared.some(t => t.id === gId);
-
-    // 如果這不是我的，也沒存過，代表是「新朋友點擊連結」，強制存入
-    if (!isMine && !isShared) {
-      const newShare = { id: gId, name: "載入中..." };
-      const updatedShared = [...currentShared, newShare];
-      localStorage.setItem("sharedTrips", JSON.stringify(updatedShared));
-      setSharedTrips(updatedShared);
-    }
-    loadTrip(gId);
-  };
-
-  // --- 2. 初始化 useEffect ---
-  useEffect(() => {
-    const localMy = JSON.parse(localStorage.getItem("myTrips") || "[]");
-    const localShared = JSON.parse(localStorage.getItem("sharedTrips") || "[]");
-    setMyTrips(localMy);
-    setSharedTrips(localShared);
-
-    const searchParams = new URLSearchParams(window.location.search);
-    const gId = searchParams.get("groupId");
-
-    if (gId) {
-      handleUrlEntry(gId, localMy, localShared);
-    }
-  }, []);
-
-  // --- 3. 其他操作函式 ---
-
-  // 建立新旅程
+  // --- 2. 建立新旅程 (只會進「我建立的」) ---
   const createNewTrip = async () => {
     const gId = "grp_" + Math.random().toString(36).substring(2, 10);
     const tId = "day_" + Math.random().toString(36).substring(2, 10);
@@ -145,30 +143,31 @@ export default function Home() {
     window.location.search = `?groupId=${gId}`;
   };
 
-  // 儀表板改名
+  // --- 3. 儀表板改名與刪除 ---
   const renameTripInDashboard = async (id: string, newName: string, listType: "my" | "shared") => {
     const key = listType === "my" ? "myTrips" : "sharedTrips";
     const currentList = JSON.parse(localStorage.getItem(key) || "[]");
     const updated = currentList.map((t: TripRecord) => t.id === id ? { ...t, name: newName } : t);
+    
     localStorage.setItem(key, JSON.stringify(updated));
     if (listType === "my") setMyTrips(updated); else setSharedTrips(updated);
 
     try { await updateDoc(doc(db, "groups", id), { name: newName }); } catch (e) { console.error(e); }
   };
 
-  // 移除列表
   const removeTrip = (id: string, listType: "my" | "shared", e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm("確定從列表移除？(資料庫不會刪除)")) {
+    if (confirm("確定從列表移除？(資料庫不會刪除，只有這台裝置看不到)")) {
       const key = listType === "my" ? "myTrips" : "sharedTrips";
       const currentList = JSON.parse(localStorage.getItem(key) || "[]");
       const updated = currentList.filter((t: TripRecord) => t.id !== id);
+      
       localStorage.setItem(key, JSON.stringify(updated));
       if (listType === "my") setMyTrips(updated); else setSharedTrips(updated);
     }
   };
 
-  // 載入行程內容
+  // --- 4. 行程內容操作 ---
   useEffect(() => {
     if (!tripId) return;
     const q = query(collection(db, "trips", tripId, "plans"), orderBy("order", "asc"));
@@ -179,19 +178,13 @@ export default function Home() {
     return unsub;
   }, [tripId]);
 
-  // 加入行程
   const handleAddPlan = async () => {
     if (!title) return alert("請輸入地點！");
-    if (!tripId) return alert("系統載入中，請稍後再試...");
-
+    if (!tripId) return alert("系統載入中...");
     try {
-      await addDoc(collection(db, "trips", tripId, "plans"), { 
-        title, note, order: plans.length, createdAt: new Date() 
-      });
+      await addDoc(collection(db, "trips", tripId, "plans"), { title, note, order: plans.length, createdAt: new Date() });
       setTitle(""); setNote("");
-    } catch (e) {
-      alert("新增失敗，請檢查網路連線");
-    }
+    } catch (e) { alert("新增失敗"); }
   };
 
   const saveEdit = async (planId: string) => {
@@ -243,7 +236,7 @@ export default function Home() {
     return text.split(urlRegex).map((part, i) => urlRegex.test(part) ? <a key={i} href={part} target="_blank" rel="noreferrer" style={{ color: "#007AFF" }}>{part}</a> : part);
   };
 
-  // --- 4. 介面渲染 ---
+  // --- 5. 介面渲染 ---
   if (view === "dashboard") {
     return (
       <div style={{ padding: "30px", maxWidth: "600px", margin: "0 auto", fontFamily: "sans-serif" }}>
@@ -253,6 +246,7 @@ export default function Home() {
           ✨ 建立新旅程
         </button>
 
+        {/* 區塊 A：我建立的 */}
         <h3 style={{ borderBottom: "2px solid #eee", paddingBottom: "10px", marginBottom: "15px", color: "#333" }}>🏠 我建立的行程</h3>
         {myTrips.length === 0 && <p style={{ color: "#aaa", fontSize: "14px", marginBottom: "30px" }}>尚無建立紀錄</p>}
         {myTrips.map(trip => (
@@ -262,6 +256,7 @@ export default function Home() {
           </div>
         ))}
 
+        {/* 區塊 B：朋友分享的 */}
         <h3 style={{ borderBottom: "2px solid #eee", paddingBottom: "10px", marginBottom: "15px", marginTop: "30px", color: "#007AFF" }}>🤝 朋友分享的行程</h3>
         {sharedTrips.length === 0 && <p style={{ color: "#aaa", fontSize: "14px" }}>點開朋友傳的連結，就會自動出現在這裡！</p>}
         {sharedTrips.map(trip => (
@@ -274,6 +269,7 @@ export default function Home() {
     );
   }
 
+  // 行程規劃頁
   return (
     <div style={{ padding: "20px", maxWidth: "600px", margin: "0 auto", fontFamily: "sans-serif" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
@@ -281,7 +277,11 @@ export default function Home() {
         <input value={groupName} onChange={(e) => { setGroupName(e.target.value); updateDoc(doc(db, "groups", groupId!), { name: e.target.value }); }} style={{ fontWeight: "bold", border: "none", textAlign: "right", fontSize: "18px", width: "60%" }} />
       </div>
 
-      <button onClick={() => { navigator.clipboard.writeText(window.location.href); alert("🔗 已複製！發給朋友即可開始協作"); }} style={{ width: "100%", padding: "12px", marginBottom: "20px", borderRadius: "10px", border: "none", backgroundColor: "#34C759", color: "white", fontWeight: "bold", cursor: "pointer" }}>📢 邀請朋友協作 (複製連結)</button>
+      {/* ✨ 這裡就是你要的：保持一樣的分享位置，分享單個旅程連結 (擁有編輯權) */}
+      <button onClick={() => { navigator.clipboard.writeText(window.location.href); alert("🔗 已複製！朋友點開後可編輯並同步更新！"); }} 
+              style={{ width: "100%", padding: "12px", marginBottom: "20px", borderRadius: "10px", border: "none", backgroundColor: "#34C759", color: "white", fontWeight: "bold", cursor: "pointer" }}>
+        📢 分享此行程 (可協作編輯)
+      </button>
 
       {/* 天數切換 */}
       <div style={{ display: "flex", gap: "5px", overflowX: "auto", marginBottom: "20px", paddingBottom: "5px", borderBottom: "1px solid #eee" }}>
@@ -301,7 +301,7 @@ export default function Home() {
         <button onClick={handleAddPlan} style={{ width: "100%", padding: "12px", backgroundColor: "#007AFF", color: "white", borderRadius: "10px", border: "none", fontWeight: "bold" }}>➕ 加入行程</button>
       </div>
 
-      {/* 列表區 */}
+      {/* 列表區 (拖曳 & 編輯) */}
       <div onDragOver={(e) => e.preventDefault()} style={{ touchAction: "none" }}>
         {plans.map((plan, index) => (
           <div key={plan.id} data-index={index}
