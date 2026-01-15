@@ -172,7 +172,7 @@ export default function Home() {
   if (view === "dashboard") {
     return (
       <div style={{ padding: "30px", maxWidth: "600px", margin: "0 auto", fontFamily: "sans-serif" }}>
-        <h1 style={{ fontWeight: "800", fontSize: "32px" }}>旅遊總管</h1>
+        <h1 style={{ fontWeight: "800", fontSize: "32px" }}>我想浪的地方們</h1>
         <button onClick={createNewTrip} style={{ width: "100%", padding: "15px", backgroundColor: "#007AFF", color: "white", borderRadius: "12px", border: "none", fontWeight: "bold", margin: "20px 0" }}>✨ 建立新旅程</button>
 
         <h3 style={{ borderBottom: "1px solid #eee", paddingBottom: "10px" }}>🏠 我建立的行程</h3>
@@ -201,7 +201,7 @@ export default function Home() {
           </div>
         ))}
 
-        <h3 style={{ borderBottom: "1px solid #eee", paddingBottom: "10px", marginTop: "30px", color: "#007AFF" }}>🤝 朋友分享的行程</h3>
+        <h3 style={{ borderBottom: "1px solid #eee", paddingBottom: "10px", marginTop: "30px", color: "#007AFF" }}>🤝 朋友揪你浪的</h3>
         {sharedTrips.map(trip => (
           <div key={trip.id} onClick={() => loadTrip(trip.id)} style={{ padding: "15px", backgroundColor: "#EEF6FF", borderRadius: "12px", marginBottom: "10px", display: "flex", justifyContent: "space-between", alignItems: "center", border: "1px solid #D6E4FF" }}>
             {dbEditId === trip.id ? (
@@ -232,7 +232,7 @@ export default function Home() {
   return (
     <div style={{ padding: "20px", maxWidth: "600px", margin: "0 auto", fontFamily: "sans-serif" }}>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "20px" }}>
-        <button onClick={() => { setView("dashboard"); window.history.pushState(null, "", window.location.pathname); }} style={{ color: "#007AFF", border: "none", background: "none", fontWeight: "bold" }}>❮ 回總管</button>
+        <button onClick={() => { setView("dashboard"); window.history.pushState(null, "", window.location.pathname); }} style={{ color: "#007AFF", border: "none", background: "none", fontWeight: "bold" }}>❮ 回首頁</button>
         <input value={groupName} onChange={(e) => { setGroupName(e.target.value); updateDoc(doc(db, "groups", groupId!), { name: e.target.value }); }} style={{ fontWeight: "bold", border: "none", textAlign: "right", width: "50%" }} />
       </div>
 
@@ -244,7 +244,7 @@ export default function Home() {
         }} 
         style={{ width: "100%", padding: "12px", backgroundColor: "#34C759", color: "white", borderRadius: "10px", border: "none", fontWeight: "bold", marginBottom: "20px" }}
       >
-        📢 分享此旅程給朋友
+        📢 分享旅程給要浪的朋友
       </button>
 
       <div style={{ display: "flex", gap: "5px", overflowX: "auto", marginBottom: "20px" }}>
@@ -264,7 +264,7 @@ export default function Home() {
       </div>
 
       <div style={{ backgroundColor: "#F2F2F7", padding: "15px", borderRadius: "15px", marginBottom: "20px" }}>
-        <input placeholder="要去哪裡？" value={title} onChange={(e) => setTitle(e.target.value)} style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #ddd", marginBottom: "10px" }} />
+        <input placeholder="要去哪浪？" value={title} onChange={(e) => setTitle(e.target.value)} style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #ddd", marginBottom: "10px" }} />
         <textarea placeholder="備註" value={note} onChange={(e) => setNote(e.target.value)} style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #ddd", marginBottom: "10px" }} />
         <button onClick={handleAddPlan} style={{ width: "100%", padding: "10px", backgroundColor: "#007AFF", color: "white", borderRadius: "8px", border: "none" }}>➕ 加入行程</button>
       </div>
