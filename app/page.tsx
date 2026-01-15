@@ -23,7 +23,6 @@ interface TripRecord {
 export default function Home() {
   const [view, setView] = useState<"dashboard" | "planner">("dashboard");
   
-  // ✨ 兩個清單：我建立的 vs 朋友分享的
   const [myTrips, setMyTrips] = useState<TripRecord[]>([]);
   const [sharedTrips, setSharedTrips] = useState<TripRecord[]>([]);
   
@@ -43,31 +42,25 @@ export default function Home() {
   const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
   const touchDragItem = useRef<number | null>(null);
 
-  // 初始化
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     const gId = searchParams.get("groupId");
     
-    // 載入本地儲存
     const savedMyTrips = JSON.parse(localStorage.getItem("myTrips") || "[]");
     const savedSharedTrips = JSON.parse(localStorage.getItem("sharedTrips") || "[]");
     setMyTrips(savedMyTrips);
     setSharedTrips(savedSharedTrips);
 
     if (gId) {
-      // ✨ 關鍵邏輯：判斷這個 ID 是「我的」還是「新分享的」
       const isMine = savedMyTrips.some((t: TripRecord) => t.id === gId);
       const isAlreadyShared = savedSharedTrips.some((t: TripRecord) => t.id === gId);
 
-      // 如果這不是我的，也還沒存過，就把它當作「新的分享行程」存起來
       if (!isMine && !isAlreadyShared) {
-        // 先暫存一個紀錄，等 loadTrip 抓到名字後會更新
         const newShare = { id: gId, name: "載入中..." };
         const updatedShared = [...savedSharedTrips, newShare];
         setSharedTrips(updatedShared);
         localStorage.setItem("sharedTrips", JSON.stringify(updatedShared));
       }
-
       loadTrip(gId);
     }
   }, []);
@@ -86,20 +79,16 @@ export default function Home() {
         setDays(rawDays);
         if (!tripId && rawDays.length > 0) setTripId(rawDays[0].id);
 
-        // ✨ 同步更新本地名稱 (不管在「我的」還是「分享」清單，都更新名字)
         updateLocalName(gId, currentName);
       }
     });
   };
 
-  // 智慧更新本地名稱
   const updateLocalName = (id: string, name: string) => {
     const mySaved = JSON.parse(localStorage.getItem("myTrips") || "[]");
     const sharedSaved = JSON.parse(localStorage.getItem("sharedTrips") || "[]");
-
     let modified = false;
 
-    // 檢查我的清單
     const myIndex = mySaved.findIndex((t: TripRecord) => t.id === id);
     if (myIndex > -1 && mySaved[myIndex].name !== name) {
       mySaved[myIndex].name = name;
@@ -108,7 +97,6 @@ export default function Home() {
       modified = true;
     }
 
-    // 檢查分享清單
     const sharedIndex = sharedSaved.findIndex((t: TripRecord) => t.id === id);
     if (sharedIndex > -1 && sharedSaved[sharedIndex].name !== name) {
       sharedSaved[sharedIndex].name = name;
@@ -118,16 +106,29 @@ export default function Home() {
     }
   };
 
-  // 建立新旅程 (歸類在 "我建立的")
+  // ✨ 儀表板改名 (共用邏輯：同步更新本地與資料庫)
+  const renameTripInDashboard = async (id: string, newName: string, listType: "my" | "shared") => {
+    // 1. 更新本地狀態
+    if (listType === "my") {
+      const updated = myTrips.map(t => t.id === id ? { ...t, name: newName } : t);
+      setMyTrips(updated);
+      localStorage.setItem("myTrips", JSON.stringify(updated));
+    } else {
+      const updated = sharedTrips.map(t => t.id === id ? { ...t, name: newName } : t);
+      setSharedTrips(updated);
+      localStorage.setItem("sharedTrips", JSON.stringify(updated));
+    }
+
+    // 2. 更新資料庫 (因為是協作，所以要同步)
+    try { await updateDoc(doc(db, "groups", id), { name: newName }); } catch (e) { console.error(e); }
+  };
+
   const createNewTrip = async () => {
     const gId = "grp_" + Math.random().toString(36).substring(2, 10);
     const tId = "day_" + Math.random().toString(36).substring(2, 10);
     const defaultName = "新旅程";
-    
-    // 存入 Firebase
     await setDoc(doc(db, "groups", gId), { name: defaultName, days: [{ id: tId, label: "Day 1" }] });
     
-    // 存入「我建立的」
     const saved = JSON.parse(localStorage.getItem("myTrips") || "[]");
     saved.push({ id: gId, name: defaultName });
     localStorage.setItem("myTrips", JSON.stringify(saved));
@@ -136,7 +137,6 @@ export default function Home() {
     window.location.search = `?groupId=${gId}`;
   };
 
-  // 移除列表 (只刪除本地紀錄)
   const removeTrip = (id: string, listType: "my" | "shared", e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirm("確定從列表移除？(資料庫不會刪除)")) {
@@ -152,7 +152,6 @@ export default function Home() {
     }
   };
 
-  // 載入行程 Plans
   useEffect(() => {
     if (!tripId) return;
     const q = query(collection(db, "trips", tripId, "plans"), orderBy("order", "asc"));
@@ -162,7 +161,6 @@ export default function Home() {
     });
   }, [tripId]);
 
-  // 儲存編輯
   const saveEdit = async (planId: string) => {
     if (!tripId) return;
     try {
@@ -171,7 +169,6 @@ export default function Home() {
     } catch (e) { alert("更新失敗"); }
   };
 
-  // 拖曳邏輯
   const handleDrop = async (index: number) => {
     if (draggedItemIndex === null || draggedItemIndex === index) return;
     reorderPlans(draggedItemIndex, index);
@@ -214,40 +211,48 @@ export default function Home() {
     return text.split(urlRegex).map((part, i) => urlRegex.test(part) ? <a key={i} href={part} target="_blank" rel="noreferrer" style={{ color: "#007AFF" }}>{part}</a> : part);
   };
 
-  // --- 視圖 A：儀表板 (Dashboard) ---
   if (view === "dashboard") {
     return (
       <div style={{ padding: "30px", maxWidth: "600px", margin: "0 auto", fontFamily: "sans-serif" }}>
-        <h1 style={{ fontWeight: "800", fontSize: "32px", marginBottom: "10px" }}>我要去浪的地方們</h1>
+        <h1 style={{ fontWeight: "800", fontSize: "32px", marginBottom: "10px" }}>我想去浪的地方們</h1>
         
         <button onClick={createNewTrip} style={{ width: "100%", padding: "15px", backgroundColor: "#007AFF", color: "white", borderRadius: "12px", border: "none", fontWeight: "bold", fontSize: "16px", marginBottom: "30px", boxShadow: "0 4px 12px rgba(0,122,255,0.3)" }}>
-          ✨ 建立新旅程
+          ✨ 建立浪點
         </button>
 
-        {/* 區塊 1: 我建立的 */}
-        <h3 style={{ borderBottom: "2px solid #eee", paddingBottom: "10px", marginBottom: "15px", color: "#333" }}>🏠 建立的浪人之旅</h3>
-        {myTrips.length === 0 && <p style={{ color: "#aaa", fontSize: "14px", marginBottom: "30px" }}>尚未想好要去哪浪</p>}
+        <h3 style={{ borderBottom: "2px solid #eee", paddingBottom: "10px", marginBottom: "15px", color: "#333" }}>🏠 我建立的行程</h3>
+        {myTrips.length === 0 && <p style={{ color: "#aaa", fontSize: "14px", marginBottom: "30px" }}>尚無建立紀錄</p>}
         {myTrips.map(trip => (
           <div key={trip.id} onClick={() => loadTrip(trip.id)} style={{ padding: "15px", backgroundColor: "#F2F2F7", borderRadius: "12px", marginBottom: "10px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ fontWeight: "bold", fontSize: "16px" }}>{trip.name}</div>
-            <button onClick={(e) => removeTrip(trip.id, "my", e)} style={{ border: "none", background: "#fff", color: "#FF3B30", borderRadius: "50%", width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 4px rgba(0,0,0,0.1)" }}>🗑️</button>
+            {/* ✨ 這裡改回了輸入框！ */}
+            <input 
+              value={trip.name} 
+              onClick={(e) => e.stopPropagation()} 
+              onChange={(e) => renameTripInDashboard(trip.id, e.target.value, "my")}
+              style={{ border: "none", background: "transparent", fontWeight: "bold", fontSize: "16px", width: "100%", padding: "5px 0" }} 
+            />
+            <button onClick={(e) => removeTrip(trip.id, "my", e)} style={{ border: "none", background: "#fff", color: "#FF3B30", borderRadius: "50%", width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 4px rgba(0,0,0,0.1)", marginLeft: "10px" }}>🗑️</button>
           </div>
         ))}
 
-        {/* 區塊 2: 朋友分享的 */}
-        <h3 style={{ borderBottom: "2px solid #eee", paddingBottom: "10px", marginBottom: "15px", marginTop: "30px", color: "#007AFF" }}>🤝 朋友揪你去浪</h3>
-        {sharedTrips.length === 0 && <p style={{ color: "#aaa", fontSize: "14px" }}>只要點開朋友傳的連結，就會自動出現在這裡！</p>}
+        <h3 style={{ borderBottom: "2px solid #eee", paddingBottom: "10px", marginBottom: "15px", marginTop: "30px", color: "#007AFF" }}>🤝 朋友揪你浪的行程</h3>
+        {sharedTrips.length === 0 && <p style={{ color: "#aaa", fontSize: "14px" }}>點開連結後會自動出現在這</p>}
         {sharedTrips.map(trip => (
           <div key={trip.id} onClick={() => loadTrip(trip.id)} style={{ padding: "15px", backgroundColor: "#EEF6FF", borderRadius: "12px", marginBottom: "10px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", border: "1px solid #D6E4FF" }}>
-            <div style={{ fontWeight: "bold", fontSize: "16px", color: "#0056b3" }}>{trip.name}</div>
-            <button onClick={(e) => removeTrip(trip.id, "shared", e)} style={{ border: "none", background: "#fff", color: "#FF3B30", borderRadius: "50%", width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 4px rgba(0,0,0,0.1)" }}>🗑️</button>
+            {/* ✨ 朋友的行程也改回了輸入框！ */}
+            <input 
+              value={trip.name} 
+              onClick={(e) => e.stopPropagation()} 
+              onChange={(e) => renameTripInDashboard(trip.id, e.target.value, "shared")}
+              style={{ border: "none", background: "transparent", fontWeight: "bold", fontSize: "16px", width: "100%", padding: "5px 0", color: "#0056b3" }} 
+            />
+            <button onClick={(e) => removeTrip(trip.id, "shared", e)} style={{ border: "none", background: "#fff", color: "#FF3B30", borderRadius: "50%", width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 4px rgba(0,0,0,0.1)", marginLeft: "10px" }}>🗑️</button>
           </div>
         ))}
       </div>
     );
   }
 
-  // --- 視圖 B：行程規劃 (Planner) ---
   return (
     <div style={{ padding: "20px", maxWidth: "600px", margin: "0 auto", fontFamily: "sans-serif" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
@@ -255,12 +260,11 @@ export default function Home() {
         <input value={groupName} onChange={(e) => { setGroupName(e.target.value); updateDoc(doc(db, "groups", groupId!), { name: e.target.value }); }} style={{ fontWeight: "bold", border: "none", textAlign: "right", fontSize: "18px", width: "60%" }} />
       </div>
 
-      <button onClick={() => { navigator.clipboard.writeText(window.location.href); alert("🔗 已複製！朋友點開連結後，這份行程也會自動出現在他們那邊！"); }} 
+      <button onClick={() => { navigator.clipboard.writeText(window.location.href); alert("🔗 已複製！發給朋友他就可以知道你去哪浪"); }} 
               style={{ width: "100%", padding: "12px", marginBottom: "20px", borderRadius: "10px", border: "none", backgroundColor: "#34C759", color: "white", fontWeight: "bold", cursor: "pointer" }}>
         📢 邀請朋友一起浪 (複製連結)
       </button>
 
-      {/* 天數切換 */}
       <div style={{ display: "flex", gap: "5px", overflowX: "auto", marginBottom: "20px", paddingBottom: "5px", borderBottom: "1px solid #eee" }}>
         {days.map((day) => (
           <div key={day.id} onClick={() => setTripId(day.id)} style={{ padding: "10px 15px", borderRadius: "10px 10px 0 0", cursor: "pointer", whiteSpace: "nowrap", backgroundColor: tripId === day.id ? "#007AFF" : "#eee", color: tripId === day.id ? "white" : "#666", display: "flex", alignItems: "center", gap: "8px", border: "1px solid #ddd", borderBottom: "none" }}>
@@ -271,14 +275,12 @@ export default function Home() {
         <button onClick={() => { const newId = "day_" + Math.random().toString(36).substring(2, 10); updateDoc(doc(db, "groups", groupId!), { days: [...days, { id: newId, label: `Day ${days.length + 1}` }] }); setTripId(newId); }} style={{ padding: "10px", color: "#007AFF", border: "none", background: "none", fontWeight: "bold" }}>＋天數</button>
       </div>
 
-      {/* 輸入區 */}
       <div style={{ backgroundColor: "#F2F2F7", padding: "15px", borderRadius: "15px", marginBottom: "30px" }}>
         <input placeholder="要去哪浪？" value={title} onChange={(e) => setTitle(e.target.value)} style={{ width: "100%", padding: "12px", borderRadius: "10px", border: "1px solid #ddd", marginBottom: "10px" }} />
         <textarea placeholder="備註" value={note} onChange={(e) => setNote(e.target.value)} style={{ width: "100%", padding: "12px", borderRadius: "10px", border: "1px solid #ddd", marginBottom: "10px" }} />
         <button onClick={async () => { if (!title) return; await addDoc(collection(db, "trips", tripId!, "plans"), { title, note, order: plans.length, createdAt: new Date() }); setTitle(""); setNote(""); }} style={{ width: "100%", padding: "12px", backgroundColor: "#007AFF", color: "white", borderRadius: "10px", border: "none", fontWeight: "bold" }}>➕ 加入行程</button>
       </div>
 
-      {/* 列表區 (拖曳 & 編輯) */}
       <div onDragOver={(e) => e.preventDefault()} style={{ touchAction: "none" }}>
         {plans.map((plan, index) => (
           <div key={plan.id} data-index={index}
