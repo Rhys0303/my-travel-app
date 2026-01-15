@@ -34,14 +34,16 @@ export default function Home() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editNote, setEditNote] = useState("");
-  const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
-  const touchDragItem = useRef<number | null>(null);
 
-  // ✨ 新增：首頁更名專用狀態
+  // 首頁更名狀態
   const [dbEditId, setDbEditId] = useState<string | null>(null);
   const [dbEditName, setDbEditName] = useState("");
 
-  // 初始化與自動分類
+  // 拖曳狀態
+  const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
+  const touchDragItem = useRef<number | null>(null);
+
+  // 初始化
   useEffect(() => {
     const localMy = JSON.parse(localStorage.getItem("myTrips") || "[]");
     const localShared = JSON.parse(localStorage.getItem("sharedTrips") || "[]");
@@ -54,7 +56,6 @@ export default function Home() {
     if (gId) {
       const isMine = localMy.some((t: TripRecord) => t.id === gId);
       const isShared = localShared.some((t: TripRecord) => t.id === gId);
-
       if (!isMine && !isShared) {
         const newShare = { id: gId, name: "載入分享行程..." };
         const updatedShared = [...localShared, newShare];
@@ -101,7 +102,6 @@ export default function Home() {
     }
   };
 
-  // 儀表板更名邏輯
   const renameTripInDashboard = async (id: string, newName: string, listType: "my" | "shared") => {
     const key = listType === "my" ? "myTrips" : "sharedTrips";
     const list = JSON.parse(localStorage.getItem(key) || "[]");
@@ -109,12 +109,12 @@ export default function Home() {
     localStorage.setItem(key, JSON.stringify(updated));
     if (listType === "my") setMyTrips(updated); else setSharedTrips(updated);
     await updateDoc(doc(db, "groups", id), { name: newName });
-    setDbEditId(null); // ✨ 儲存後退出編輯模式
+    setDbEditId(null);
   };
 
   const removeTrip = (id: string, listType: "my" | "shared", e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm("確定要從列表移除此旅程？")) return;
+    if (!confirm("確定移除清單？")) return;
     const key = listType === "my" ? "myTrips" : "sharedTrips";
     const updated = JSON.parse(localStorage.getItem(key) || "[]").filter((t: any) => t.id !== id);
     localStorage.setItem(key, JSON.stringify(updated));
@@ -124,9 +124,9 @@ export default function Home() {
   const createNewTrip = async () => {
     const gId = "grp_" + Math.random().toString(36).substring(2, 10);
     const tId = "day_" + Math.random().toString(36).substring(2, 10);
-    await setDoc(doc(db, "groups", gId), { name: "新計畫", days: [{ id: tId, label: "Day 1" }] });
+    await setDoc(doc(db, "groups", gId), { name: "新旅程", days: [{ id: tId, label: "Day 1" }] });
     const saved = JSON.parse(localStorage.getItem("myTrips") || "[]");
-    saved.push({ id: gId, name: "新計畫" });
+    saved.push({ id: gId, name: "新旅程" });
     localStorage.setItem("myTrips", JSON.stringify(saved));
     window.location.href = `?groupId=${gId}`;
   };
@@ -150,6 +150,7 @@ export default function Home() {
     setEditingId(null);
   };
 
+  // --- 核心拖曳邏輯 ---
   const reorderPlans = (from: number, to: number) => {
     const newPlans = [...plans];
     const [item] = newPlans.splice(from, 1);
@@ -158,9 +159,51 @@ export default function Home() {
   };
 
   const saveOrderToDb = async () => {
+    if (!tripId) return;
     const batch = writeBatch(db);
     plans.forEach((p, i) => batch.update(doc(db, "trips", tripId!, "plans", p.id), { order: i }));
     await batch.commit();
+  };
+
+  // 💻 電腦版拖曳
+  const handleDrop = (index: number) => {
+    if (draggedItemIndex !== null && draggedItemIndex !== index) {
+      reorderPlans(draggedItemIndex, index);
+      setDraggedItemIndex(null);
+      saveOrderToDb();
+    }
+  };
+
+  // 📱 手機版觸控拖曳 (修正並強化)
+  const handleTouchStart = (index: number) => {
+    if (editingId !== null) return; // 編輯中不允許拖曳
+    touchDragItem.current = index;
+    setDraggedItemIndex(index);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchDragItem.current === null) return;
+
+    // 取得目前手指所在的座標
+    const touch = e.touches[0];
+    // 關鍵：找出座標下方的卡片
+    const targetElement = document.elementFromPoint(touch.clientX, touch.clientY);
+    const targetCard = targetElement?.closest('[data-index]');
+    
+    if (targetCard) {
+      const targetIndex = parseInt(targetCard.getAttribute('data-index')!);
+      if (targetIndex !== touchDragItem.current) {
+        reorderPlans(touchDragItem.current, targetIndex);
+        touchDragItem.current = targetIndex;
+        setDraggedItemIndex(targetIndex);
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    touchDragItem.current = null;
+    setDraggedItemIndex(null);
+    saveOrderToDb(); // 放開手指才寫入 Firebase
   };
 
   const renderNote = (text: string) => {
@@ -168,32 +211,26 @@ export default function Home() {
     return text.split(urlRegex).map((part, i) => urlRegex.test(part) ? <a key={i} href={part} target="_blank" rel="noreferrer" style={{ color: "#007AFF" }}>{part}</a> : part);
   };
 
-  // --- 介面 ---
+  // --- 介面渲染 ---
   if (view === "dashboard") {
     return (
       <div style={{ padding: "30px", maxWidth: "600px", margin: "0 auto", fontFamily: "sans-serif" }}>
-        <h1 style={{ fontWeight: "800", fontSize: "32px" }}>我想浪的地方們</h1>
+        <h1 style={{ fontWeight: "800", fontSize: "32px" }}>旅遊行程總覽</h1>
         <button onClick={createNewTrip} style={{ width: "100%", padding: "15px", backgroundColor: "#007AFF", color: "white", borderRadius: "12px", border: "none", fontWeight: "bold", margin: "20px 0" }}>✨ 建立新旅程</button>
 
-        <h3 style={{ borderBottom: "1px solid #eee", paddingBottom: "10px" }}>🏠 我建立的行程</h3>
+        <h3>🏠 我建立的行程</h3>
         {myTrips.map(trip => (
           <div key={trip.id} onClick={() => loadTrip(trip.id)} style={{ padding: "15px", backgroundColor: "#F2F2F7", borderRadius: "12px", marginBottom: "10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            {/* ✨ 判斷是否處於編輯狀態 */}
             {dbEditId === trip.id ? (
               <div style={{ flex: 1, display: "flex", gap: "10px" }} onClick={(e) => e.stopPropagation()}>
-                <input 
-                  value={dbEditName} 
-                  onChange={(e) => setDbEditName(e.target.value)} 
-                  style={{ flex: 1, border: "1px solid #007AFF", borderRadius: "5px", padding: "5px" }} 
-                />
+                <input value={dbEditName} onChange={(e) => setDbEditName(e.target.value)} style={{ flex: 1, border: "1px solid #007AFF", borderRadius: "5px", padding: "5px" }} />
                 <button onClick={() => renameTripInDashboard(trip.id, dbEditName, "my")} style={{ background: "#34C759", color: "#fff", border: "none", borderRadius: "5px", padding: "5px 10px" }}>儲存</button>
               </div>
             ) : (
               <>
                 <b style={{ flex: 1 }}>{trip.name}</b>
                 <div style={{ display: "flex", gap: "10px" }}>
-                  {/* ✨ 新增編輯按鈕 */}
-                  <button onClick={(e) => { e.stopPropagation(); setDbEditId(trip.id); setDbEditName(trip.name); }} style={{ border: "none", background: "none", cursor: "pointer", fontSize: "16px" }}>📝</button>
+                  <button onClick={(e) => { e.stopPropagation(); setDbEditId(trip.id); setDbEditName(trip.name); }} style={{ border: "none", background: "none", fontSize: "16px" }}>📝</button>
                   <button onClick={(e) => removeTrip(trip.id, "my", e)} style={{ border: "none", color: "red", background: "none", fontSize: "16px" }}>🗑️</button>
                 </div>
               </>
@@ -201,23 +238,19 @@ export default function Home() {
           </div>
         ))}
 
-        <h3 style={{ borderBottom: "1px solid #eee", paddingBottom: "10px", marginTop: "30px", color: "#007AFF" }}>🤝 朋友揪你浪的</h3>
+        <h3 style={{ marginTop: "30px", color: "#007AFF" }}>🤝 朋友揪的的行程</h3>
         {sharedTrips.map(trip => (
           <div key={trip.id} onClick={() => loadTrip(trip.id)} style={{ padding: "15px", backgroundColor: "#EEF6FF", borderRadius: "12px", marginBottom: "10px", display: "flex", justifyContent: "space-between", alignItems: "center", border: "1px solid #D6E4FF" }}>
             {dbEditId === trip.id ? (
               <div style={{ flex: 1, display: "flex", gap: "10px" }} onClick={(e) => e.stopPropagation()}>
-                <input 
-                  value={dbEditName} 
-                  onChange={(e) => setDbEditName(e.target.value)} 
-                  style={{ flex: 1, border: "1px solid #007AFF", borderRadius: "5px", padding: "5px" }} 
-                />
+                <input value={dbEditName} onChange={(e) => setDbEditName(e.target.value)} style={{ flex: 1, border: "1px solid #007AFF", borderRadius: "5px", padding: "5px" }} />
                 <button onClick={() => renameTripInDashboard(trip.id, dbEditName, "shared")} style={{ background: "#34C759", color: "#fff", border: "none", borderRadius: "5px", padding: "5px 10px" }}>儲存</button>
               </div>
             ) : (
               <>
                 <b style={{ color: "#0056b3", flex: 1 }}>{trip.name}</b>
                 <div style={{ display: "flex", gap: "10px" }}>
-                  <button onClick={(e) => { e.stopPropagation(); setDbEditId(trip.id); setDbEditName(trip.name); }} style={{ border: "none", background: "none", cursor: "pointer", fontSize: "16px" }}>📝</button>
+                  <button onClick={(e) => { e.stopPropagation(); setDbEditId(trip.id); setDbEditName(trip.name); }} style={{ border: "none", background: "none", fontSize: "16px" }}>📝</button>
                   <button onClick={(e) => removeTrip(trip.id, "shared", e)} style={{ border: "none", color: "red", background: "none", fontSize: "16px" }}>🗑️</button>
                 </div>
               </>
@@ -228,24 +261,18 @@ export default function Home() {
     );
   }
 
-  // --- 規劃頁面 (Planner) 保持不動 ---
   return (
     <div style={{ padding: "20px", maxWidth: "600px", margin: "0 auto", fontFamily: "sans-serif" }}>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "20px" }}>
-        <button onClick={() => { setView("dashboard"); window.history.pushState(null, "", window.location.pathname); }} style={{ color: "#007AFF", border: "none", background: "none", fontWeight: "bold" }}>❮ 回首頁</button>
-        <input value={groupName} onChange={(e) => { setGroupName(e.target.value); updateDoc(doc(db, "groups", groupId!), { name: e.target.value }); }} style={{ fontWeight: "bold", border: "none", textAlign: "right", width: "50%" }} />
+        <button onClick={() => { setView("dashboard"); window.history.pushState(null, "", window.location.pathname); }} style={{ color: "#007AFF", border: "none", background: "none", fontWeight: "bold" }}>❮ 回總管</button>
+        <input value={groupName} onChange={(e) => { setGroupName(e.target.value); updateDoc(doc(db, "groups", groupId!), { name: e.target.value }); }} style={{ fontWeight: "bold", border: "none", textAlign: "right", width: "50%", fontSize: "18px" }} />
       </div>
 
-      <button 
-        onClick={() => { 
-          const shareUrl = `${window.location.origin}${window.location.pathname}?groupId=${groupId}`;
-          navigator.clipboard.writeText(shareUrl); 
-          alert("✅ 旅程連結已複製！發送給朋友，他們點開後會自動存入『分享行程』並可一起編輯。"); 
-        }} 
-        style={{ width: "100%", padding: "12px", backgroundColor: "#34C759", color: "white", borderRadius: "10px", border: "none", fontWeight: "bold", marginBottom: "20px" }}
-      >
-        📢 分享旅程給要浪的朋友
-      </button>
+      <button onClick={() => { 
+        const shareUrl = `${window.location.origin}${window.location.pathname}?groupId=${groupId}`;
+        navigator.clipboard.writeText(shareUrl); 
+        alert("✅ 已複製連結！"); 
+      }} style={{ width: "100%", padding: "12px", backgroundColor: "#34C759", color: "white", borderRadius: "10px", border: "none", fontWeight: "bold", marginBottom: "20px" }}>📢 分享連結</button>
 
       <div style={{ display: "flex", gap: "5px", overflowX: "auto", marginBottom: "20px" }}>
         {days.map(day => (
@@ -260,44 +287,52 @@ export default function Home() {
         <button onClick={() => {
           const newId = "day_" + Math.random().toString(36).substring(2, 10);
           updateDoc(doc(db, "groups", groupId!), { days: [...days, { id: newId, label: `Day ${days.length + 1}` }] });
-        }} style={{ border: "none", background: "none", color: "#007AFF" }}>＋天數</button>
+          setTripId(newId);
+        }} style={{ border: "none", background: "none", color: "#007AFF", fontWeight: "bold" }}>＋天數</button>
       </div>
 
       <div style={{ backgroundColor: "#F2F2F7", padding: "15px", borderRadius: "15px", marginBottom: "20px" }}>
-        <input placeholder="要去哪浪？" value={title} onChange={(e) => setTitle(e.target.value)} style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #ddd", marginBottom: "10px" }} />
+        <input placeholder="地點" value={title} onChange={(e) => setTitle(e.target.value)} style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #ddd", marginBottom: "10px" }} />
         <textarea placeholder="備註" value={note} onChange={(e) => setNote(e.target.value)} style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #ddd", marginBottom: "10px" }} />
-        <button onClick={handleAddPlan} style={{ width: "100%", padding: "10px", backgroundColor: "#007AFF", color: "white", borderRadius: "8px", border: "none" }}>➕ 加入行程</button>
+        <button onClick={handleAddPlan} style={{ width: "100%", padding: "10px", backgroundColor: "#007AFF", color: "white", borderRadius: "8px", border: "none", fontWeight: "bold" }}>➕ 加入行程</button>
       </div>
 
+      {/* 📱 關鍵容器設定：touchAction: "none" 防止拖曳時網頁捲動 */}
       <div style={{ touchAction: "none" }}>
         {plans.map((plan, index) => (
-          <div key={plan.id} data-index={index} 
-               draggable onDragStart={() => setDraggedItemIndex(index)} 
-               onDrop={() => { reorderPlans(draggedItemIndex!, index); setDraggedItemIndex(null); saveOrderToDb(); }}
-               onTouchStart={() => { touchDragItem.current = index; setDraggedItemIndex(index); }}
-               onTouchMove={(e) => {
-                 const target = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY)?.closest('[data-index]');
-                 if (target) {
-                   const targetIdx = parseInt(target.getAttribute('data-index')!);
-                   if (targetIdx !== touchDragItem.current) { reorderPlans(touchDragItem.current!, targetIdx); touchDragItem.current = targetIdx; }
-                 }
-               }}
-               onTouchEnd={() => { touchDragItem.current = null; setDraggedItemIndex(null); saveOrderToDb(); }}
-               style={{ border: "1px solid #ddd", padding: "15px", borderRadius: "12px", marginBottom: "10px", backgroundColor: "#fff", opacity: draggedItemIndex === index ? 0.5 : 1 }}>
+          <div 
+            key={plan.id} 
+            data-index={index} // ✨ 供 TouchMove 辨識位置用
+            draggable 
+            onDragStart={() => setDraggedItemIndex(index)} 
+            onDrop={() => handleDrop(index)}
+            onDragOver={(e) => e.preventDefault()}
+            
+            // ✨ 手機觸控事件
+            onTouchStart={() => handleTouchStart(index)}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+
+            style={{ 
+              border: "1px solid #ddd", padding: "15px", borderRadius: "15px", marginBottom: "12px", 
+              backgroundColor: "#fff", opacity: draggedItemIndex === index ? 0.5 : 1,
+              transition: "transform 0.1s ease"
+            }}
+          >
             {editingId === plan.id ? (
-              <div>
-                <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} style={{ width: "100%", marginBottom: "5px" }} />
-                <textarea value={editNote} onChange={(e) => setEditNote(e.target.value)} style={{ width: "100%", marginBottom: "10px" }} />
-                <button onClick={() => saveEdit(plan.id)} style={{ backgroundColor: "#34C759", color: "white", padding: "5px 10px", borderRadius: "5px" }}>儲存</button>
+              <div onTouchStart={(e) => e.stopPropagation()}>
+                <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} style={{ width: "100%", marginBottom: "5px", padding: "5px" }} />
+                <textarea value={editNote} onChange={(e) => setEditNote(e.target.value)} style={{ width: "100%", marginBottom: "10px", padding: "5px" }} />
+                <button onClick={() => saveEdit(plan.id)} style={{ backgroundColor: "#34C759", color: "white", padding: "5px 15px", borderRadius: "5px", border: "none" }}>儲存</button>
               </div>
             ) : (
               <>
-                <div style={{ display: "flex", justifyContent: "space-between" }}><b>{plan.title}</b><span>☰</span></div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}><b>{plan.title}</b><span style={{ color: "#ccc" }}>☰</span></div>
                 <p style={{ fontSize: "14px", color: "#444" }}>{renderNote(plan.note)}</p>
-                <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
-                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(plan.title)}`} target="_blank" rel="noreferrer" style={{ fontSize: "12px", color: "#007AFF" }}>🗺️ 地圖</a>
-                  <button onClick={() => { setEditingId(plan.id); setEditTitle(plan.title); setEditNote(plan.note); }} style={{ background: "none", border: "none", color: "#007AFF", fontSize: "12px" }}>📝 編輯</button>
-                  <button onClick={() => deleteDoc(doc(db, "trips", tripId!, "plans", plan.id))} style={{ background: "none", border: "none", color: "red", fontSize: "12px", marginLeft: "auto" }}>🗑️ 刪除</button>
+                <div style={{ display: "flex", gap: "15px", marginTop: "10px", borderTop: "1px solid #eee", paddingTop: "10px" }}>
+                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(plan.title)}`} target="_blank" rel="noreferrer" style={{ fontSize: "12px", color: "#007AFF", fontWeight: "bold" }} onTouchStart={(e) => e.stopPropagation()}>🗺️ 地圖</a>
+                  <button onClick={() => { setEditingId(plan.id); setEditTitle(plan.title); setEditNote(plan.note); }} style={{ background: "none", border: "none", color: "#007AFF", fontSize: "12px", fontWeight: "bold" }} onTouchStart={(e) => e.stopPropagation()}>📝 編輯</button>
+                  <button onClick={() => deleteDoc(doc(db, "trips", tripId!, "plans", plan.id))} style={{ background: "none", border: "none", color: "red", fontSize: "12px", marginLeft: "auto", fontWeight: "bold" }} onTouchStart={(e) => e.stopPropagation()}>🗑️ 刪除</button>
                 </div>
               </>
             )}
