@@ -227,7 +227,7 @@ export default function Home() {
   if (view === "dashboard") {
     return (
       <div style={{ padding: "30px", maxWidth: "600px", margin: "0 auto", fontFamily: "sans-serif" }}>
-        <h1 style={{ fontWeight: "800", fontSize: "32px" }}>旅遊總管</h1>
+        <h1 style={{ fontWeight: "800", fontSize: "32px" }}>旅遊總覽</h1>
         <button onClick={createNewTrip} style={{ width: "100%", padding: "15px", backgroundColor: "#007AFF", color: "white", borderRadius: "12px", border: "none", fontWeight: "bold", margin: "20px 0" }}>✨ 建立新旅程</button>
 
         <h3>🏠 我建立的行程</h3>
@@ -250,7 +250,7 @@ export default function Home() {
           </div>
         ))}
 
-        <h3 style={{ marginTop: "30px", color: "#007AFF" }}>🤝 朋友分享的行程</h3>
+        <h3 style={{ marginTop: "30px", color: "#007AFF" }}>🤝 朋友揪行程</h3>
         {sharedTrips.map(trip => (
           <div key={trip.id} onClick={() => loadTrip(trip.id)} style={{ padding: "15px", backgroundColor: "#EEF6FF", borderRadius: "12px", marginBottom: "10px", display: "flex", justifyContent: "space-between", alignItems: "center", border: "1px solid #D6E4FF", cursor: "pointer" }}>
             {dbEditId === trip.id ? (
@@ -276,7 +276,7 @@ export default function Home() {
   return (
     <div style={{ padding: "20px", maxWidth: "600px", margin: "0 auto", fontFamily: "sans-serif" }}>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "20px" }}>
-        <button onClick={() => { setView("dashboard"); window.history.pushState(null, "", window.location.pathname); }} style={{ color: "#007AFF", border: "none", background: "none", fontWeight: "bold" }}>❮ 回總管</button>
+        <button onClick={() => { setView("dashboard"); window.history.pushState(null, "", window.location.pathname); }} style={{ color: "#007AFF", border: "none", background: "none", fontWeight: "bold" }}>❮ 回首頁</button>
         <input value={groupName} onChange={(e) => { setGroupName(e.target.value); updateDoc(doc(db, "groups", groupId!), { name: e.target.value }); }} style={{ fontWeight: "bold", border: "none", textAlign: "right", width: "50%", fontSize: "18px" }} />
       </div>
 
