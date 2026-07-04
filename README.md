@@ -9,7 +9,8 @@ Travel Planner App ✈️
 
 內建友善的互動設計，當輸入資訊不完整時，系統會給予即時提醒，確保您的規劃邏輯無誤，避免遺漏重要細節。
 3. 完整的行程總覽
-<img width="1280" height="2774" alt="7a0c0e15cac7820acc7fcdce99aee21f" src="https://github.com/user-attachments/assets/a5ac1faf-8f66-4954-ae87-3270dea7c9ea" />
+![Uploading 4985fd982b9ee70b3ef144cc6844cc2a.jpeg…]()
+
 
 
 規劃完成後，清晰的總覽頁面讓您能一眼掌握當日所有安排，並提供編輯與管理功能，隨時調整您的旅行計畫。
@@ -20,7 +21,7 @@ Travel Planner App ✈️
     錯誤預防機制：即時驗證功能，減少操作錯誤。
 
     清晰的視覺呈現：幫助使用者快速確認每日行程進度。
-    ![Uploading 7a0c0e15cac7820acc7fcdce99aee21f.jpeg…]()
+  
 
 
 🛠 技術 
