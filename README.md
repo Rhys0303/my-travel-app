@@ -33,7 +33,6 @@ Travel Planner App ✈️
 
 🛠 技術 
 
-(請根據你的實際情況修改此處，例如：)
 
     前端：React / Vue.js / Flutter
 
