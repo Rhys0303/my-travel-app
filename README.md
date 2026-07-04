@@ -25,6 +25,6 @@ Travel Planner App ✈️
 
     前端：React / Vue.js / Flutter
 
-    後端：Node.js / Python / Firebase
+    後端：Node.js /java / Firebase
 
     資料庫：Firestore / SQLite / PostgreSQL
