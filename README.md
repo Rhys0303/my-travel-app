@@ -13,6 +13,9 @@
 * **智慧列表分流**：
   * 使用者自行點擊「建立新旅程」產生的項目，將永久歸類於 **「🏠 我建立的行程」**。
   * 點開朋友分享的連結，系統會進行解構判定，自動將其歸類於首頁的 **「🤝 朋友分享的行程」**。
+ <img <img width="1280" height="2774" alt="075d01be21eff3171d851cb67410f58d" src="https://github.com/user-attachments/assets/34574d78-efb7-47d8-b594-8326a641c34f" />
+ <img width="1280" height="2774" alt="075d01be21eff3171d851cb67410f58d" src="https://github.com/user-attachments/assets/42dc9ef9-b464-4dbe-94cf-4f467e29811b" />
+
 
 ### 2. 📱 行動端觸控拖曳排序 (Mobile Touch Reordering)
 * 針對 iOS/Android 瀏覽器不支援 `draggable` 屬性的原生缺陷，自行透過 React `useRef` 與 **Touch Events (`onTouchStart`, `onTouchMove`, `onTouchEnd`)** 實作了一套**碰撞偵測演算法**。
@@ -22,7 +25,8 @@
 ### 3. 💾 強效資料同步與防丟失機制 (Race Condition Fix)
 * **狀態競爭處理**：在多人同時對一趟旅程進行天數（Day ID）與行程切換時，`useEffect` 會強制解構並清除舊的監聽器（Cleanup Subscription），即時與雲端重新建立精確連線，防止資料寫入錯誤路徑。
 * **防呆安全鎖**：新增行程前會自動校驗 `tripId` 的有效性，避免因為網路延遲將數據存入「虛無」中。  
-<img width="1280" height="2774" alt="4985fd982b9ee70b3ef144cc6844cc2a" src="https://github.com/user-attachments/assets/683505aa-f51c-46ab-bde1-e1292b1ddd6d" />
+width="1280" height="2774" alt="7a0c0e15cac7820acc7fcdce99aee21f" src="https://github.com/user-attachments/assets/191bc28a-15b1-4c2d-bb7c-4305a968aa75" />
+
 
 
 
