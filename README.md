@@ -22,7 +22,11 @@ Travel Planner App ✈️
 
     
  -----------------------------------------------------------
-<img src="assets/image_682164.png" alt="專案結構" width="600"/>
+
+
+
+<img width="1280" height="2774" alt="4985fd982b9ee70b3ef144cc6844cc2a" src="https://github.com/user-attachments/assets/70ad135f-f4d3-49a0-8ebc-12fd571afcd5" />
+
 
 
 
