@@ -18,9 +18,8 @@ Travel Planner App ✈️
     錯誤預防機制：即時驗證功能，減少操作錯誤。
 
     清晰的視覺呈現：幫助使用者快速確認每日行程進度。
-
-
-  ![Uploading 4985fd982b9ee70b3ef144cc6844cc2a.jpeg…]()
+    
+    <img width="1280" height="2774" alt="4985fd982b9ee70b3ef144cc6844cc2a" src="https://github.com/user-attachments/assets/27ec449d-9f5d-4114-8671-c3c552d31c4c" />
 
 
 
