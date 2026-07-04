@@ -21,8 +21,8 @@
 
 ### 3. 💾 強效資料同步與防丟失機制 (Race Condition Fix)
 * **狀態競爭處理**：在多人同時對一趟旅程進行天數（Day ID）與行程切換時，`useEffect` 會強制解構並清除舊的監聽器（Cleanup Subscription），即時與雲端重新建立精確連線，防止資料寫入錯誤路徑。
-* **防呆安全鎖**：新增行程前會自動校驗 `tripId` 的有效性，避免因為網路延遲將數據存入「虛無」中。
-* ![Uploading 7a0c0e15cac7820acc7fcdce99aee21f.jpeg…]()
+* **防呆安全鎖**：新增行程前會自動校驗 `tripId` 的有效性，避免因為網路延遲將數據存入「虛無」中。  
+<img width="1280" height="2774" alt="4985fd982b9ee70b3ef144cc6844cc2a" src="https://github.com/user-attachments/assets/683505aa-f51c-46ab-bde1-e1292b1ddd6d" />
 
 
 
