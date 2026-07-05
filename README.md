@@ -34,6 +34,10 @@
 * 針對 iOS/Android 瀏覽器不支援 `draggable` 屬性的原生缺陷，自行透過 React `useRef` 與 **Touch Events (`onTouchStart`, `onTouchMove`, `onTouchEnd`)** 實作了一套**碰撞偵測演算法**。
 * 透過 `document.elementFromPoint(x, y)` 動態比對網頁座標，在手指滑動時即時進行微型 UI 陣列排序，並在手指放開後**批次寫入（Firestore WriteBatch）** 雲端，兼顧效能與操作手感。
 * 容器設定 `touch-action: none` 防止系統預設的下拉重整攔截拖曳行為。
+  
+https://github.com/user-attachments/assets/40323ca9-cc62-4e2c-bd3d-1e1a6b8c4b62
+
+
 
 ### 3. 💾 強效資料同步與防丟失機制 
 * **狀態競爭處理**：在多人同時對一趟旅程進行天數（Day ID）與行程切換時，`useEffect` 會強制解構並清除舊的監聽器（Cleanup Subscription），即時與雲端重新建立精確連線，防止資料寫入錯誤路徑。
