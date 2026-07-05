@@ -39,7 +39,7 @@ https://github.com/user-attachments/assets/40323ca9-cc62-4e2c-bd3d-1e1a6b8c4b62
 
 
 
-### 3. 💾 強效資料同步與防丟失機制 
+### 3. 強效資料同步與防丟失機制 
 * **狀態競爭處理**：在多人同時對一趟旅程進行天數（Day ID）與行程切換時，`useEffect` 會強制解構並清除舊的監聽器（Cleanup Subscription），即時與雲端重新建立精確連線，防止資料寫入錯誤路徑。
 * **防呆安全鎖**：新增行程前會自動校驗 `tripId` 的有效性，避免因為網路延遲將數據存入「虛無」中。  
 <img width="1280" height="2774" alt="7a0c0e15cac7820acc7fcdce99aee21f" src="https://github.com/user-attachments/assets/5ff4e33c-218e-4494-97ed-a18c1481411e" />
@@ -68,8 +68,7 @@ https://github.com/user-attachments/assets/40323ca9-cc62-4e2c-bd3d-1e1a6b8c4b62
 * **`trips/{dayId}/plans/{planId}`**: 儲存特定天數下的具體行程（地點、備註、`order` 排序欄位）。
 
 ---
-## 開發挑戰與除錯歷程 
-
+##  開發挑戰與除錯歷程 
 在開發本專案的過程中，團隊面臨了從前端交互、即時同步到後端架構等多個維度的技術挑戰，並透過敏捷開發與持續整合測試逐一克服：
 1. 跨端異步數據同步與狀態競爭 
     面臨困難：本專案的初衷是打造如 Apple 備忘錄般的多人高效協作體驗。但在跨裝置（手機對手機）即時測試時，發現當 A、B 使用者同時變更天數標籤（Day ID）或快速新增行程時，由於 Firebase Firestore 異步載入的時間差，導致數據偶爾會寫入錯誤的虛擬路徑，造成「行程短暫消失」的狀態競爭現象。
