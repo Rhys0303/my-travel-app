@@ -30,7 +30,7 @@
  <img width="1280" height="2774" alt="075d01be21eff3171d851cb67410f58d" src="https://github.com/user-attachments/assets/42dc9ef9-b464-4dbe-94cf-4f467e29811b" />
 
 
-### 2. 📱 行動端觸控拖曳排序 
+### 2.  行動端觸控拖曳排序 
 * 針對 iOS/Android 瀏覽器不支援 `draggable` 屬性的原生缺陷，自行透過 React `useRef` 與 **Touch Events (`onTouchStart`, `onTouchMove`, `onTouchEnd`)** 實作了一套**碰撞偵測演算法**。
 * 透過 `document.elementFromPoint(x, y)` 動態比對網頁座標，在手指滑動時即時進行微型 UI 陣列排序，並在手指放開後**批次寫入（Firestore WriteBatch）** 雲端，兼顧效能與操作手感。
 * 容器設定 `touch-action: none` 防止系統預設的下拉重整攔截拖曳行為。
